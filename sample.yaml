@@ -1,0 +1,22 @@
+---
+type: agenda/todo/create
+todoId: 1
+todo:
+  title: Display TODOs
+ts: 2015-12-08T03:43:55Z
+---
+type: agenda/todo/set/status
+todoId: 1
+status: complete
+ts: 2015-12-08T03:44:23Z
+---
+type: agenda/todo/create
+todoId: 2
+todo:
+  title: Test list
+ts: 2015-12-08T04:00:34Z
+---
+type: agenda/todo/set/status
+todoId: 2
+status: complete
+ts: 2015-12-08T04:02:22Z
