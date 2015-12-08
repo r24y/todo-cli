@@ -3,8 +3,15 @@ import uuid from 'uuid';
 import fs from 'fs';
 import co from 'co';
 import chalk from 'chalk';
-
+import path from 'path';
+import tmp from 'tmp';
+import editor from 'editor';
 import yaml from 'js-yaml';
+import React, {Component} from 'react';
+import blessed from 'blessed';
+import {render} from 'react-blessed';
+
+tmp.setGracefulCleanup();
 
 //-- type Status = string
 const Status = {
@@ -85,8 +92,7 @@ class Todo {
 }
 
 function prettyPrintTodo({_id, title, status, estimate, deadline}) {
-  const color = STATUS_COLORS[status] || chalk.white;
-  return color(`${_id}. ${STATUS_DISPLAY[status]} ${title}`);
+  return (`${_id}. ${STATUS_DISPLAY[status]} ${title}`);
 }
 
 //-- type EventID = UUID
@@ -126,21 +132,25 @@ class Event {
   }
 }
 
+function getUserHome() {
+  return process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME'];
+}
+
 const TODO_CREATE = 'agenda/todo/create';
 const TODO_SET_TITLE = 'agenda/todo/set/title';
 const TODO_SET_STATUS = 'agenda/todo/set/status';
 const TODO_SET_ESTIMATE = 'agenda/todo/set/estimate';
 const TODO_SET_DEADLINE = 'agenda/todo/set/deadline';
-const TODO_ADD_DEPENDENT = 'agenda/todo/add/dependent';
-const TODO_REMOVE_DEPENDENT = 'agenda/todo/remove/dependent';
+const TODO_ADD_DEPENDENT = 'agenda/todo/dependent/add';
+const TODO_REMOVE_DEPENDENT = 'agenda/todo/dependent/remove';
 const TODO_DESTROY = 'agenda/todo/destroy';
 
 const EVENT_CREATE = 'agenda/event/create';
 const EVENT_SET_TITLE = 'agenda/event/set/title';
 const EVENT_SET_START = 'agenda/event/set/start';
 const EVENT_SET_DURATION = 'agenda/event/set/duration';
-const EVENT_ADD_CAUSE = 'agenda/event/add/cause';
-const EVENT_REMOVE_CAUSE = 'agenda/event/remove/cause';
+const EVENT_ADD_CAUSE = 'agenda/event/cause/add';
+const EVENT_REMOVE_CAUSE = 'agenda/event/cause/remove';
 const EVENT_DESTROY = 'agenda/event/destroy';
 
 const defaultState = {
@@ -157,6 +167,7 @@ function reducer(state = defaultState, action) {
         ...state.todos,
         [todoId]: {
           status: Status.READY,
+          dependentIDs: [],
           ...action.todo,
           _id: todoId
         },
@@ -208,7 +219,7 @@ function reducer(state = defaultState, action) {
         ...state.todos,
         [todoId]: {
           ...state.todos[todoId],
-          dependents: state.todos[todoId].dependents.concat([action.dependentId]),
+          dependentIDs: state.todos[todoId].dependentIDs.concat([action.dependentId]),
         },
       },
     };
@@ -218,7 +229,7 @@ function reducer(state = defaultState, action) {
         ...state.todos,
         [todoId]: {
           ...state.todos[todoId],
-          dependents: state.todos[todoId].dependents.filter(x => x !== action.dependentId)
+          dependentIDs: state.todos[todoId].dependentIDs.filter(x => x !== action.dependentId)
         },
       },
     };
@@ -256,7 +267,7 @@ class AgendaState {
 
 co(function *() {
   const yamlSrc = yield new Promise((resolve, reject) => {
-    fs.readFile('sample.yaml', (err, contents) => {
+    fs.readFile(path.join(getUserHome(), '.todo.yaml'), (err, contents) => {
       if (err) return reject(err);
       return resolve(contents);
     })
@@ -265,9 +276,60 @@ co(function *() {
   yaml.safeLoadAll(yamlSrc, event => events.push(event));
   let state;
   events.forEach(event => state = reducer(state, event));
-  Object.keys(state.todos).forEach(id => {
-    console.log(` ${prettyPrintTodo(state.todos[id])}`);
+  const items = Object.keys(state.todos).map(id => {
+    return prettyPrintTodo(state.todos[id]);
   });
+  const screen = blessed.screen({
+    autoPadding: true,
+    smartCSR: true,
+    title: 'todo',
+  });
+  screen.key(['escape', 'q', 'C-c'], function(ch, key) {
+    return process.exit(0);
+  });
+  screen.enableMouse();
+  const app = render(<App items={items}/>, screen);
 }).catch(err => {
   console.error(err.stack);
 });
+
+class App extends Component {
+  componentDidMount() {
+    this.refs.list.select(0);
+  }
+  render() {
+    return (<element>
+      <textbox
+        ref="todo"
+        border={{type: 'line'}}
+        width="100%"
+        top="0"
+        height={3}
+        left="0"
+        width="100%"
+        mouse={true}
+        inputOnFocus={true}
+      />
+      <list
+        ref="list"
+        items={this.props.items}
+        top={3}
+        bottom="0"
+        left="0"
+        right="0"
+        mouse={true}
+        vi={true}
+        interactive={true}
+        invertSelected={true}
+        inputOnFocus={true}
+        style={{
+          selected: {
+            fg: 'black',
+            bg: 'white',
+          }
+        }}
+        border={{type: 'line', fg: 'green'}}
+      />
+    </element>);
+  }
+}

@@ -1,6 +1,6 @@
 {
   "name": "todo-cli",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "description": "",
   "main": "dist/index.js",
   "scripts": {
@@ -12,13 +12,20 @@
   "devDependencies": {
     "babel-polyfill": "^6.3.14",
     "babel-preset-es2015": "^6.3.13",
-    "babel-register": "^6.3.13",
-    "babel-preset-stage-0": "^6.3.13"
+    "babel-preset-react": "^6.3.13",
+    "babel-preset-stage-0": "^6.3.13",
+    "babel-register": "^6.3.13"
   },
   "dependencies": {
+    "blessed": "^0.1.81",
     "chalk": "^1.1.1",
     "co": "^4.6.0",
+    "editor": "^1.0.0",
     "js-yaml": "^3.4.6",
+    "react": "^0.14.0",
+    "react-blessed": "^0.1.7",
+    "redux": "^3.0.4",
+    "tmp": "0.0.28",
     "uuid": "^2.0.1"
   }
 }
